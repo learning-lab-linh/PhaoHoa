@@ -2,9 +2,10 @@
 <head>
   <meta charset="UTF-8">
   <title>@2026</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
 <meta name="theme-color" content="#000000">
 <link rel="shortcut icon" type="image/png" href="https://s3-us-west-2.amazonaws.com/s.cdpn.io/329180/firework-burst-icon-v2.png">
 <link rel="icon" type="image/png" href="https://s3-us-west-2.amazonaws.com/s.cdpn.io/329180/firework-burst-icon-v2.png">
@@ -43,9 +44,10 @@
 
 <!-- App -->
 <div class="container">
-	<div class="loading-init">
-		<div class="loading-init__header">Loading</div>
-		<div class="loading-init__status">Lắp pháo cùng LINH....</div>
+	<div class="loading-init" id="countdown-screen">
+		<div class="loading-init__header countdown-display">23:59:55</div>
+		<div class="loading-init__date countdown-date">31/12/2025</div>
+		<div class="loading-init__status">Đếm ngược đến giao thừa 2026...</div>
 	</div>
 	<div class="stage-container remove">
 		<div class="canvas-container">

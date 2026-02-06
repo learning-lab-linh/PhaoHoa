@@ -670,6 +670,69 @@ const ringShell = (size=1) => {
 	// return Object.assign({}, defaultShell, config);
 };
 
+// Điểm tạo hình "2026" (7-segment). Mỗi segment: [x1,y1, x2,y2] trong ô 0..1.
+function sampleSegment(x1, y1, x2, y2, n) {
+	const out = [];
+	for (let i = 0; i <= n; i++) {
+		const t = i / n;
+		out.push([ x1 + (x2 - x1) * t, y1 + (y2 - y1) * t ]);
+	}
+	return out;
+}
+// Thêm điểm lệch nhẹ vuông góc để nét chữ dày hơn, dễ nhìn
+function thickenSegment(x1, y1, x2, y2, n, thickness) {
+	const pts = [];
+	const dx = x2 - x1, dy = y2 - y1;
+	const len = Math.sqrt(dx * dx + dy * dy) || 1;
+	const nx = -dy / len * thickness, ny = dx / len * thickness;
+	for (let i = 0; i <= n; i++) {
+		const t = i / n;
+		const x = x1 + dx * t, y = y1 + dy * t;
+		pts.push([x, y]);
+		pts.push([x + nx, y + ny]);
+		pts.push([x - nx, y - ny]);
+	}
+	return pts;
+}
+// 7-segment trong ô 1x1 (tỷ lệ rõ, nét đủ dày)
+const seg = (a, b, c, d) => [a, b, c, d];
+// 7-segment: 2 = top, ur, mid, bl, bottom (không có br). 3 = top, ur, mid, br, bottom.
+const digitSegments = {
+	'2': [ seg(0.12,0.05,0.88,0.05), seg(0.88,0.05,0.88,0.45), seg(0.12,0.45,0.88,0.45), seg(0.12,0.45,0.12,0.95), seg(0.12,0.95,0.88,0.95) ],
+	'0': [ seg(0.12,0.05,0.88,0.05), seg(0.88,0.05,0.88,0.5), seg(0.88,0.5,0.88,0.95), seg(0.12,0.95,0.88,0.95), seg(0.12,0.5,0.12,0.95), seg(0.12,0.05,0.12,0.5) ],
+	'6': [ seg(0.12,0.05,0.88,0.05), seg(0.12,0.05,0.12,0.5), seg(0.12,0.5,0.12,0.95), seg(0.12,0.95,0.88,0.95), seg(0.88,0.5,0.88,0.95), seg(0.12,0.5,0.88,0.5) ]
+};
+function getYear2026Points(pointsPerSegment = 10, useThick = true) {
+	const digits = ['2','0','2','6'];
+	const pts = [];
+	const thick = useThick ? 0.028 : 0;
+	digits.forEach((d, idx) => {
+		const segs = digitSegments[d];
+		const cx = (idx - 1.5) * 1.08;
+		segs.forEach(([x1, y1, x2, y2]) => {
+			const sampled = thick ? thickenSegment(x1, y1, x2, y2, pointsPerSegment, thick) : sampleSegment(x1, y1, x2, y2, pointsPerSegment);
+			sampled.forEach(([px, py]) => {
+				pts.push([ (px + cx - 0.5) * 2, (py - 0.5) * 2 ]);
+			});
+		});
+	});
+	return pts;
+}
+
+const year2026Shell = (size = 1) => {
+	const color = Math.random() < 0.6 ? COLOR.Gold : (Math.random() < 0.5 ? COLOR.White : randomColor({ limitWhite: true }));
+	return {
+		shellSize: size,
+		year2026: true,
+		spreadSize: 420 + size * 100,
+		starLife: 1800 + size * 250,
+		starLifeVariation: 0.08,
+		color,
+		glitter: 'light',
+		glitterColor: COLOR.White
+	};
+};
+
 const crossetteShell = (size=1) => {
 	const color = randomColor({ limitWhite: true });
 	return {
@@ -784,6 +847,7 @@ function randomFastShell() {
 
 const shellTypes = {
 	'Random': randomShell,
+	'2026': year2026Shell,
 	'Crackle': crackleShell,
 	'Crossette': crossetteShell,
 	'Crysanthemum': crysanthemumShell,
@@ -801,8 +865,11 @@ const shellNames = Object.keys(shellTypes);
 
 function init() {
 	// Remove loading state
-	document.querySelector('.loading-init').remove();
+	const loadingEl = document.querySelector('.loading-init');
+	if (loadingEl) loadingEl.remove();
 	appNodes.stageContainer.classList.remove('remove');
+	const container = document.querySelector('.container');
+	if (container) container.classList.add('stage-visible');
 	
 	// Populate dropdowns
 	function setOptionsForSelect(node, options) {
@@ -1076,7 +1143,8 @@ function startSequence() {
 			return seqTwoRandom();
 		}
 		else {
-			const shell = new Shell(crysanthemumShell(shellSizeSelector()));
+			// Phát đầu tiên: pháo hoa hình 2026
+			const shell = new Shell(year2026Shell(shellSizeSelector()));
 			shell.launch(0.5, 0.5);
 			return 2400;
 		}
@@ -1739,6 +1807,36 @@ class Shell {
 		let sparkLifeVariation = 0.25;
 		// Some death effects, like crackle, play a sound, but should only be played once.
 		let playedDeathSound = false;
+
+		// Pháo hoa hình "2026": đặt sao theo outline các chữ số (nét dày, ít tán để đọc rõ)
+		if (this.year2026) {
+			color = this.color;
+			sparkFreq = 320 / quality;
+			sparkSpeed = 0.35;
+			sparkLife = 350;
+			sparkLifeVariation = 1.5;
+			const scale = this.spreadSize / 3.2;
+			const points = getYear2026Points(10, true);
+			const life = this.starLife + Math.random() * this.starLife * (this.starLifeVariation || 0.1);
+			points.forEach(([dx, dy]) => {
+				const jitter = 0.99 + Math.random() * 0.02;
+				const px = x + dx * scale * jitter;
+				const py = y + dy * scale * jitter;
+				const angle = Math.random() * PI_2;
+				const star = Star.add(px, py, color, angle, 0.025 + Math.random() * 0.02, life, 0, 0);
+				star.sparkFreq = sparkFreq;
+				star.sparkSpeed = sparkSpeed;
+				star.sparkLife = sparkLife;
+				star.sparkLifeVariation = sparkLifeVariation;
+				star.sparkColor = this.glitterColor || COLOR.White;
+				star.sparkTimer = Math.random() * star.sparkFreq;
+			});
+			BurstFlash.add(x, y, this.spreadSize / 3);
+			if (this.comet) {
+				soundManager.playSound('burst', 0.85);
+			}
+			return;
+		}
 		
 		if (this.crossette) onDeath = (star) => {
 			if (!playedDeathSound) {
@@ -2270,23 +2368,104 @@ const soundManager = {
 // Kick things off.
 
 function setLoadingStatus(status) {
-	document.querySelector('.loading-init__status').textContent = status;
+	const el = document.querySelector('.loading-init__status');
+	if (el) el.textContent = status;
+}
+
+// Đếm ngược 5 giây: 23:59:55 → 23:59:56 → 23:59:57 → 23:59:58 → 23:59:59 → 00:00:00 rồi bắn pháo hoa.
+const COUNTDOWN_SECONDS = [55, 56, 57, 58, 59, 0]; // giây thứ 0,1,2,3,4,5
+const COUNTDOWN_DURATION_MS = 6000; // 6 giây (55, 56, 57, 58, 59, 00)
+
+function pad2(n) {
+	return (n < 10 ? '0' : '') + n;
+}
+
+// Tiếng tích mỗi giây khi đếm ngược (dùng Web Audio)
+function playCountdownTick(step) {
+	try {
+		const ctx = soundManager.ctx;
+		if (ctx.state === 'suspended') ctx.resume();
+		const now = ctx.currentTime;
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.connect(gain);
+		gain.connect(ctx.destination);
+		if (step < 5) {
+			// Tích: 55, 56, 57, 58, 59
+			osc.frequency.value = 880;
+			osc.type = 'sine';
+			gain.gain.setValueAtTime(0.15, now);
+			gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+			osc.start(now);
+			osc.stop(now + 0.08);
+		} else {
+			// Tiếng đặc biệt lúc 00:00:00 (cao hơn, dài hơn)
+			osc.frequency.value = 1320;
+			osc.type = 'sine';
+			gain.gain.setValueAtTime(0.2, now);
+			gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+			osc.start(now);
+			osc.stop(now + 0.25);
+		}
+	} catch (e) {}
+}
+
+function runCountdownThenInit() {
+	const headerEl = document.querySelector('.countdown-display');
+	const dateEl = document.querySelector('.countdown-date');
+	const countdownScreen = document.getElementById('countdown-screen');
+	if (countdownScreen) {
+		countdownScreen.style.visibility = 'visible';
+		countdownScreen.style.opacity = '1';
+	}
+
+	const startTime = Date.now();
+	let lastStep = -1;
+
+	const tick = () => {
+		const elapsed = Date.now() - startTime;
+		const step = Math.floor(elapsed / 1000); // 0, 1, 2, 3, 4, 5
+
+		if (step >= COUNTDOWN_SECONDS.length) {
+			// Hết 5 giây: hiển thị 00:00:00 rồi chuyển sang pháo hoa
+			if (headerEl) headerEl.textContent = '00:00:00';
+			if (dateEl) dateEl.textContent = '01/01/2026';
+			if (countdownInterval) clearInterval(countdownInterval);
+			init();
+			return;
+		}
+
+		// Phát tiếng tích mỗi khi sang giây mới
+		if (step !== lastStep) {
+			lastStep = step;
+			playCountdownTick(step);
+		}
+
+		const s = COUNTDOWN_SECONDS[step];
+		if (s === 0) {
+			if (headerEl) headerEl.textContent = '00:00:00';
+			if (dateEl) dateEl.textContent = '01/01/2026';
+		} else {
+			if (headerEl) headerEl.textContent = '23:59:' + pad2(s);
+			if (dateEl) dateEl.textContent = '31/12/2025';
+		}
+	};
+
+	let countdownInterval = setInterval(tick, 100);
+	tick();
 }
 
 // CodePen profile header doesn't need audio, just initialize.
 if (IS_HEADER) {
-	init();
+	runCountdownThenInit();
 } else {
-	// Allow status to render, then preload assets and start app.
-	setLoadingStatus('Lighting Fuses');
+	setLoadingStatus('Đếm ngược đến giao thừa 2026...');
 	setTimeout(() => {
 		soundManager.preload()
 		.then(
-			init,
+			runCountdownThenInit,
 			reason => {
-				// Codepen preview doesn't like to load the audio, so just init to fix the preview for now.
-				init();
-				// setLoadingStatus('Error Loading Audio');
+				runCountdownThenInit();
 				return Promise.reject(reason);
 			}
 		);

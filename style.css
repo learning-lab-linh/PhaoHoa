@@ -3,21 +3,22 @@
     box-sizing: border-box;
   }
   
-  html,
-  body {
-    height: 100%;
-  }
-  
   html {
     background-color: #000;
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
   }
-  
   body {
+    min-height: 100%;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+    height: 100%;
     overflow: hidden;
     color: rgba(255, 255, 255, 0.5);
-    font-family: "Russo One", arial, sans-serif;
+    font-family: "Russo One", "Arial Black", arial, sans-serif;
     line-height: 1.25;
     letter-spacing: 0.06em;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   
   .hide {
@@ -35,28 +36,61 @@
   }
   
   .container {
-    height: 100%;
+    width: 100%;
+    min-height: 100%;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
     display: -webkit-box;
     display: flex;
     -webkit-box-pack: center;
             justify-content: center;
     -webkit-box-align: center;
             align-items: center;
+    background-color: #0a0a0a;
   }
-  
+  .container.stage-visible {
+    background-color: transparent;
+  }
+
   .loading-init {
     width: 100%;
+    max-width: 92vw;
     align-self: center;
     text-align: center;
     text-transform: uppercase;
+    color: #fff;
+    z-index: 10;
+    padding: 1.5rem;
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+    -webkit-tap-highlight-color: transparent;
   }
   .loading-init__header {
-    font-size: 2.2em;
+    font-size: clamp(2.25rem, 14vw, 5rem);
+    letter-spacing: 0.1em;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255, 200, 100, 0.5);
+    font-family: "Russo One", "Arial Black", sans-serif;
+    visibility: visible;
+    opacity: 1;
+  }
+  .loading-init__date {
+    margin-top: 0.6em;
+    font-size: clamp(0.95rem, 4.5vw, 1.5rem);
+    color: rgba(255, 255, 255, 0.95);
   }
   .loading-init__status {
-    margin-top: 1em;
-    font-size: 0.8em;
-    opacity: 0.75;
+    margin-top: 1.2em;
+    font-size: clamp(0.7rem, 3.5vw, 1rem);
+    color: rgba(255, 255, 255, 0.85);
+  }
+  @media (max-width: 480px) {
+    .loading-init__header {
+      font-size: 2.5rem;
+    }
+    .loading-init__date {
+      font-size: 1rem;
+    }
   }
   
   .stage-container {
@@ -64,6 +98,8 @@
     box-sizing: initial;
     border: 1px solid #222;
     margin: -1px;
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
   }
   @media (max-width: 840px) {
     .stage-container {
